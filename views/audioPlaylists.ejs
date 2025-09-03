@@ -1,0 +1,19 @@
+<section style="padding: 30px 20px; max-width: 600px; margin: auto;">
+  <h2 style="margin-bottom: 20px;">📂 Playlists contenant l’audio</h2>
+
+  <% if (playlists.length === 0) { %>
+    <p style="color: #ccc;">Aucune playlist ne contient cet audio pour le moment.</p>
+  <% } else { %>
+    <ul style="list-style: none; padding: 0;">
+      <% playlists.forEach(pl => { %>
+        <li style="margin-bottom: 10px;">
+          <a 
+            href="/playlists/view/<%= pl.id %>" 
+            style="display: block; background-color: #1a1a1a; color: white; padding: 10px 14px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: background 0.3s ease;">
+            📁 <%= pl.name %>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>

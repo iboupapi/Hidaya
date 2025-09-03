@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.2",
+    "multer": "^2.0.2",
+    "mysql2": "^3.14.3",
+    "sanitize-filename": "^1.6.3"
+  },
+  "name": "hidaya",
+  "version": "1.0.0",
+  "description": "Plateforme dédiée à l’écoute et au partage des audios de l’Imam Mahdi. Interface simple, classement par thème, accès rapide aux rappels et enseignements spirituels. Un outil au service de la foi et de la communauté.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon app.js"
+  },
+  "author": "Ibrahima Ndoye",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

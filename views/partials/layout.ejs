@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+ <title><%= title || 'Hidaya' %></title>
+ <link rel="icon" type="image/png" href="/images/favicon.ico" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="page-wrapper">
+  <header style="background-color: #000; color: #fff; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;">
+  <!-- Menu gauche -->
+  <nav style="display: flex; gap: 20px; position: relative;">
+    <div>
+  <a href="/" class="menu-link">Accueil</a>
+  </div>
+  
+  <div class="menu-item">
+    <a href="/audios/category/enseignement" class="menu-link">Enseignements</a>
+    <ul class="submenu">
+      <li><a href="/audios/enseignement/bayane">Bayane</a></li>
+      <li><a href="/audios/enseignement/conference">Conférence</a></li>
+      <li><a href="/audios/enseignement/rappel">Rappel</a></li>
+    </ul>
+  </div>
+
+  <a href="/audios/category/emission" class="menu-link">Émissions</a>
+  <a href="/audios/category/musique" class="menu-link">Musiques</a>
+</nav>
+
+
+
+  <!-- Logo central -->
+  <div style="text-align: center;">
+    <a href="/"><img src="/images/Yellow_and_White_Modern_Podcast_Logo-removebg-preview.png" alt="Logo Hidaya" style="height: 70px;" /></a>
+    
+  </div>
+
+
+  <!-- Menu droit -->
+  <div style="display: flex; gap: 20px; align-items: center;">
+      <!-- Lien admin (si admin connecté) -->
+  <% if (session && session.userRole === 'admin') { %>
+    <div >
+      <a href="/admin/dashboard" class="header-button">Espace admin</a>
+    </div>
+  <% } %>
+    <form action="/search" method="GET" style="display: flex; align-items: center;">
+      <input type="text" name="q" placeholder="Rechercher" style="padding: 5px;" />
+      <button type="submit" style="background: none; border: none; color: white;"></button>
+    </form>
+
+    <% if (session && session.userId) { %>
+  <a href="/dashboard" style="
+    background-color: white;
+    color: black;
+    padding: 8px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: bold;
+  ">Mon tableau de bord</a>
+<% } else { %>
+  <a href="/login" style="
+    background-color: white;
+    color: black;
+    padding: 8px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: bold;
+  ">👤 Se connecter</a>
+<% } %>
+
+  </div>
+</header>
+
+
+  <main>
+    <%- body %>
+  </main>
+  <%- include('./footer') %>
+</div>
+</body>
+</html>

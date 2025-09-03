@@ -1,0 +1,22 @@
+<h2>Résultats de recherche pour : "<%= keyword %>"</h2>
+
+<% if (audios.length === 0) { %>
+  <p>Aucun audio trouvé.</p>
+<% } else { %>
+  <% audios.forEach(audio => { %>
+    <div style="margin-bottom: 20px;">
+      <h3><%= audio.title %></h3>
+      <p><%= audio.description %></p>
+      <p>Catégorie : <%= audio.main_category %>
+        <% if (audio.main_category === 'enseignement' && audio.sub_category) { %>
+          | Sous-catégorie : <%= audio.sub_category %>
+        <% } %>
+      </p>
+      <audio controls>
+        <source src="/<%= audio.file_path %>" type="audio/mpeg">
+      </audio>
+    </div>
+  <% }) %>
+<% } %>
+
+<a href="/dashboard">🏠 Retour au tableau de bord</a>

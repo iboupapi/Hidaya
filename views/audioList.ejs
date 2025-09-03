@@ -1,0 +1,39 @@
+<section class="audio-list-container">
+  <% const categories = [
+    { title: '📘 Enseignement', audios: enseignements, link: '/audios/category/enseignement' },
+    { title: '🎙️ Émission', audios: emissions, link: '/audios/category/emission' },
+    { title: '🎵 Musique', audios: musiques, link: '/audios/category/musique' }
+  ]; %>
+
+  <% categories.forEach(cat => { %>
+    <h2><%= cat.title %></h2>
+    <div class="audio-scroll-container">
+      <% if (cat.audios && cat.audios.length > 0) { %>
+        <% cat.audios.forEach(audio => { %>
+          <% if (audio) { %>
+            <div class="audio-card">
+              <img src="/<%= audio.image_path || 'images/audio-default.jpg' %>" class="audio-image" />
+              <div class="audio-content">
+                <h3><a href="/audios/view/<%= audio.id %>" class="audio-title-link"><%= audio.title %></a></h3>
+                <p><%= audio.description %></p>
+                <audio controls><source src="/<%= audio.file_path %>" type="audio/mpeg"></audio>
+              </div>
+              <% if (session && session.userId) { %>
+                <a href="/audios/download/<%= audio.id %>" class="download-button">⬇️ Télécharger</a>
+              <% } else { %>
+                <p class="download-disabled">🔒 Connectez-vous pour télécharger</p>
+              <% } %>
+            </div>
+          <% } %>
+        <% }) %>
+      <% } else { %>
+        <div class="audio-empty">
+          <p>Aucun audio disponible pour cette catégorie pour le moment.</p>
+        </div>
+      <% } %>
+    </div>
+    <div class="see-more-wrapper">
+      <a href="<%= cat.link %>" class="see-more-link">➡️ Voir plus</a>
+    </div>
+  <% }) %>
+</section>

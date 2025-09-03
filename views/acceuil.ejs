@@ -1,0 +1,108 @@
+<section style="text-align: center; padding: 40px 20px;">
+  <h1 style="font-size: 2.5em; color: #d60000;">Bienvenue sur Hidaya</h1>
+  <p style="font-size: 1.2em; max-width: 600px; margin: auto; color: white;">
+    Hidaya est votre espace d’écoute et de réflexion.  
+    Retrouvez des enseignements, des rappels et des musiques qui inspirent, apaisent et éveillent.  
+    Chaque contenu est pensé pour vous guider avec clarté et authenticité.
+  </p>
+</section>
+<section style="padding: 30px 20px;">
+  <h2 style="margin-bottom: 20px;">🎧 Derniers audios ajoutés</h2>
+
+  <div class="audio-scroll-container">
+    <% audios.slice(0, 10).forEach(audio => { %>
+      <div class="audio-card">
+        <img src="/<%= audio.image_path || 'images/audio-default.jpg' %>" alt="Illustration audio" class="audio-image" />
+
+        <div class="audio-content">
+          <h3>
+              <a 
+                href="<%= audio.main_category === 'enseignement' 
+                  ? '/audios/enseignement/' + audio.sub_category 
+                  : '/audios/category/' + audio.main_category %>" 
+                class="audio-title-link">
+                <%= audio.title %>
+              </a>
+
+          </h3>
+          <p><%= audio.description %></p>
+
+          <p class="audio-meta">
+            Catégorie : <%= audio.main_category %>
+            <% if (audio.main_category === 'enseignement' && audio.sub_category) { %>
+              | Sous-catégorie : <%= audio.sub_category %>
+            <% } %>
+          </p>
+
+          <audio controls>
+            <source src="/<%= audio.file_path %>" type="audio/mpeg">
+          </audio>
+
+          <!-- <form action="/favorites/add/<%= audio.id %>" method="POST" style="margin-top: 10px;">
+            <button type="submit" class="favorite-button">❤️ Ajouter aux favoris</button>
+          </form> -->
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+</section>
+<section style="padding: 30px 20px;">
+  <h2 style="margin-bottom: 20px;">📂 Explorer par catégorie</h2>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+    <div class="audio-card">
+      <img src="/images/enseignement-default.jpg" alt="Enseignement" class="audio-image" />
+      <div class="audio-content">
+        <h3>📘 Enseignement</h3>
+        <p>Rappels, conférences et bayane pour nourrir l’esprit.</p>
+        <a href="/audios/category/enseignement" class="header-button">Explorer</a>
+      </div>
+    </div>
+
+    <div class="audio-card">
+      <img src="/images/Emission.png" alt="Émission" class="audio-image" />
+      <div class="audio-content">
+        <h3>🎙️ Émission</h3>
+        <p>Programmes audio variés, débats et partages culturels.</p>
+        <a href="/audios/category/emission" class="header-button">Explorer</a>
+      </div>
+    </div>
+
+    <div class="audio-card">
+      <img src="/images/categorie-musique.jpg" alt="Musique" class="audio-image" />
+      <div class="audio-content">
+        <h3>🎵 Musique</h3>
+        <p>Sonorités locales et spirituelles pour vibrer autrement.</p>
+        <a href="/audios/category/musique" class="header-button">Explorer</a>
+      </div>
+    </div>
+  </div>
+</section>
+<section style="padding: 30px 20px;">
+  <h2 style="margin-bottom: 20px;">🔥 Audios les plus aimés</h2>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+    <% topAudios.forEach(audio => { %>
+      <div class="audio-card">
+        <img src="/<%= audio.image_path || 'images/audio-default.jpg' %>" alt="Audio populaire" class="audio-image" />
+        <div class="audio-content">
+          <h3><%= audio.title %></h3>
+          <p><%= audio.description %></p>
+          <p class="audio-meta">❤️ <%= audio.favorite_count %> favoris</p>
+          <audio controls>
+            <source src="/<%= audio.file_path %>" type="audio/mpeg">
+          </audio>
+          <form action="/favorites/add/<%= audio.id %>" method="POST" style="margin-top: 10px;">
+            <button type="submit" class="favorite-button">Ajouter aux favoris</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</section>
+
+
+
+

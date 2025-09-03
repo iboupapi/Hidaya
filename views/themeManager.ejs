@@ -1,0 +1,21 @@
+<!-- <h2>Gestion des thèmes</h2>
+<form action="/admin/themes" method="POST">
+  <input type="text" name="name" placeholder="Nom du thème" required />
+  <button type="submit">Ajouter</button>
+</form>
+
+<ul>
+  <% themes.forEach(theme => { %>
+    <li>
+      <form action="/admin/themes/<%= theme.id %>/edit" method="POST" style="display:inline;">
+        <input type="text" name="name" value="<%= theme.name %>" required />
+        <button type="submit">Modifier</button>
+      </form>
+
+      <form action="/admin/themes/<%= theme.id %>/delete" method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ce thème ?');">
+        <button type="submit" style="color:red;">Supprimer</button>
+      </form>
+    </li>
+  <% }) %>
+</ul>
+ -->

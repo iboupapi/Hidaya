@@ -1,0 +1,27 @@
+<section style="padding: 30px 20px; max-width: 700px; margin: auto;">
+  <h2 style="margin-bottom: 20px;">📂 Mes playlists</h2>
+
+  <% if (playlists.length === 0) { %>
+    <p style="color: #ccc;">Aucune playlist trouvée.</p>
+    <a href="/playlists/create" class="header-button">➕ Créer une nouvelle playlist</a>
+  <% } else { %>
+    <ul style="list-style: none; padding: 0;">
+      <% playlists.forEach(playlist => { %>
+        <li style="background-color: #1a1a1a; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong style="color: white;"><%= playlist.name %></strong>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <a href="/playlists/<%= playlist.id %>/add" class="header-button">➕ Ajouter</a>
+            <a href="/playlists/<%= playlist.id %>" class="header-button">🎧 Voir</a>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+
+    <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+      <a href="/playlists/create" class="header-button">➕ Créer une nouvelle playlist</a>
+      <a href="/dashboard" class="header-button">🏠 Retour au tableau de bord</a>
+    </div>
+  <% } %>
+</section>
