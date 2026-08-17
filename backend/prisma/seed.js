@@ -20,8 +20,9 @@ async function main() {
     update: {}, 
     create: {
       email: email,
+      username: 'admin', // <-- Le champ manquant ajouté ici
       password: hashedPassword,
-      role: 'ADMIN', // Assurez-vous que ce champ correspond à votre modèle
+      role: 'ADMIN',
       name: 'Admin Principal',
       is_verified: true
     },
