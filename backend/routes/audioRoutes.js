@@ -12,9 +12,12 @@ const cpUpload = upload.fields([
 
 // Routes publiques
 router.get('/', audioController.listAudios);
+router.get('/popular', audioController.listPopularAudios);
 router.get('/search', audioController.searchAudios);
 router.get('/category/:main', audioController.listByMainCategory);
 router.get('/sub/:sub', audioController.listBySubCategory);
 router.get('/:id', authenticateToken, audioController.viewAudio);
+router.post('/:id/play', audioController.incrementPlayCount);
+router.delete('/:id', authenticateToken, requireAdmin, audioController.deleteAudio);
 
 module.exports = router;

@@ -1,30 +1,22 @@
 const multer = require("multer");
+const multerS3 = require("multer-s3");
 const path = require("path");
-const fs = require("fs");
+const s3 = require("../config/storage");
 
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let folder = "uploads/audios";
-
-    if (file.fieldname === "image") {
-      folder = "uploads/images";
-    }
-
-    ensureDir(folder);
-
-    cb(null, folder);
-  },
-
-  filename: (req, file, cb) => {
+const storage = multerS3({
+  s3,
+  bucket: process.env.S3_BUCKET,
+  contentType: multerS3.AUTO_CONTENT_TYPE,
+  // Pas d'ACL ici : R2 et B2 ne supportent pas les ACL façon AWS.
+  // La visibilité publique se gère au niveau du bucket lui-même (voir .env.example).
+  key: (req, file, cb) => {
+    const folder = file.fieldname === "image" ? "images" : "audios";
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+    cb(null, `${folder}/${unique}${path.extname(file.originalname)}`);
   }
 });
 
-module.exports = multer({ storage });
+module.exports = multer({
+  storage,
+  limits: { fileSize: 100 * 1024 * 1024 } // 100 Mo max par fichier
+});

@@ -1,37 +1,42 @@
-const db = require('../models/db');
-const crypto = require('crypto'); // Module natif de Node.js pour générer des chaînes aléatoires
+const prisma = require('../models/db');
+const crypto = require('crypto');
 
 // 🔑 POST /api/admin/codes — Générer un code pour un album (Admin seulement)
 exports.generateCode = async (req, res) => {
-  const { playlist_id } = req.body;
+  const { playlist_id, playlistId } = req.body;
+  const targetPlaylistId = parseInt(playlist_id || playlistId);
 
-  if (!playlist_id) {
-    return res.status(400).json({ error: "L'ID de l'album/playlist est obligatoire." });
+  if (isNaN(targetPlaylistId)) {
+    return res.status(400).json({ error: "L'ID de l'album/playlist est obligatoire et doit être un entier." });
   }
 
   try {
     // Vérifier si la playlist existe
-    const playlistCheck = await db.query('SELECT id, name FROM playlists WHERE id = $1', [playlist_id]);
-    if (playlistCheck.rows.length === 0) {
+    const playlist = await prisma.playlist.findUnique({
+      where: { id: targetPlaylistId },
+      select: { id: true, name: true }
+    });
+
+    if (!playlist) {
       return res.status(404).json({ error: "L'album/playlist spécifié n'existe pas." });
     }
 
-    // Génération d'un code unique de 12 caractères (ex: DI-A8F2-99B1)
+    // Génération d'un code unique de 12 caractères (ex: DI-8-A8F299B1)
     const randomString = crypto.randomBytes(4).toString('hex').toUpperCase();
-    const code = `DI-${playlist_id}-${randomString}`;
+    const code = `DI-${targetPlaylistId}-${randomString}`;
 
-    const result = await db.query(
-      `INSERT INTO access_codes (code, playlist_id) 
-       VALUES ($1, $2) 
-       RETURNING *`,
-      [code, playlist_id]
-    );
+    const newCode = await prisma.accessCode.create({
+      data: {
+        code,
+        playlistId: targetPlaylistId
+      }
+    });
 
     res.status(201).json({
       success: true,
       message: "Code d'accès généré avec succès !",
-      code: result.rows[0].code,
-      album: playlistCheck.rows[0].name
+      code: newCode.code,
+      album: playlist.name
     });
   } catch (err) {
     console.error(err);
@@ -42,50 +47,60 @@ exports.generateCode = async (req, res) => {
 // 🔓 POST /api/playlists/unlock — Débloquer un album avec un code (Utilisateur connecté)
 exports.unlockPlaylist = async (req, res) => {
   const { code } = req.body;
-  const userId = req.user.id; // Récupéré via le jeton JWT
+  const userId = req.user.id;
 
-  if (!code) {
+  if (!code || typeof code !== 'string') {
     return res.status(400).json({ error: "Le code d'accès est obligatoire." });
   }
 
-  try {
-    // 1. Vérifier si le code existe et n'est pas encore utilisé
-    const codeResult = await db.query(
-      'SELECT * FROM access_codes WHERE code = $1',
-      [code]
-    );
+  const cleanCode = code.trim();
 
-    if (codeResult.rows.length === 0) {
+  try {
+    // 1. Vérifier si le code existe et inclure la playlist associées
+    const accessCode = await prisma.accessCode.findUnique({
+      where: { code: cleanCode },
+      include: {
+        playlist: {
+          select: { name: true }
+        }
+      }
+    });
+
+    if (!accessCode) {
       return res.status(404).json({ error: "Code invalide ou inexistant." });
     }
 
-    const accessCode = codeResult.rows[0];
-
-    if (accessCode.is_used) {
+    if (accessCode.isUsed) {
       return res.status(400).json({ error: "Ce code a déjà été utilisé par un autre disciple." });
     }
 
-    // 2. Associer l'utilisateur à cet album dans la table 'unlocked_playlists'
-    // ON CONFLICT DO NOTHING évite de planter si l'utilisateur avait déjà débloqué l'album d'une autre manière
-    await db.query(
-      `INSERT INTO unlocked_playlists (user_id, playlist_id) 
-       VALUES ($1, $2) 
-       ON CONFLICT DO NOTHING`,
-      [userId, accessCode.playlist_id]
-    );
+    // 2. Transaction atomique : Déblocage de la playlist + Invalidation du code
+    await prisma.$transaction(async (tx) => {
+      // Associer l'utilisateur à cet album (Équivalent ON CONFLICT DO NOTHING)
+      await tx.unlockedPlaylist.upsert({
+        where: {
+          userId_playlistId: {
+            userId,
+            playlistId: accessCode.playlistId
+          }
+        },
+        update: {}, // Aucune modification si déjà présent
+        create: {
+          userId,
+          playlistId: accessCode.playlistId
+        }
+      });
 
-    // 3. Marquer le code comme utilisé
-    await db.query(
-      'UPDATE access_codes SET is_used = true WHERE id = $1',
-      [accessCode.id]
-    );
-
-    // Récupérer le nom de l'album pour faire un joli message de confirmation
-    const playlistInfo = await db.query('SELECT name FROM playlists WHERE id = $1', [accessCode.playlist_id]);
+      // Marquer le code comme utilisé
+      await tx.accessCode.update({
+        where: { id: accessCode.id },
+        data: { isUsed: true }
+      });
+    });
 
     res.json({
       success: true,
-      message: `Félicitations ! L'album "${playlistInfo.rows[0].name}" est désormais débloqué sur votre compte.`
+      message: `Félicitations ! L'album "${accessCode.playlist.name}" est désormais débloqué sur votre compte.`
     });
 
   } catch (err) {

@@ -1,33 +1,44 @@
-const db = require('../models/db');
+const prisma = require('../models/db');
+const publicUrl = require('../utils/publicUrl');
 
-// 🔧 Helper pour transformer un audio SQL → format API
-function mapAudio(row, req) {
+// 🔧 Helper pour transformer un audio Prisma → format API
+function mapAudio(audio) {
   return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    category: row.main_category,
-    subCategory: row.sub_category,
-    image: row.image_path
-      ? `${req.protocol}://${req.get('host')}/${row.image_path}`
-      : null,
-    file: `${req.protocol}://${req.get('host')}/${row.file_path}`,
-    createdAt: row.created_at
+    id: audio.id,
+    title: audio.title,
+    description: audio.description,
+    category: audio.mainCategory,
+    subCategory: audio.subCategory,
+    image: publicUrl(audio.imagePath),
+    file: publicUrl(audio.filePath),
+    createdAt: audio.createdAt
   };
 }
 
 // ❤️ POST /api/favorites/:audioId — ajouter un favori
 exports.addFavorite = async (req, res) => {
-  const userId = req.user.id; // Injecté par le middleware authenticateToken
-  const audioId = req.params.audioId;
+  const userId = req.user.id;
+  const audioId = parseInt(req.params.audioId);
+
+  if (isNaN(audioId)) {
+    return res.status(400).json({ error: "ID d'audio invalide" });
+  }
 
   try {
-    await db.query(
-      `INSERT INTO favorites (user_id, audio_id)
-       VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
-      [userId, audioId]
-    );
+    // Équivalent à ON CONFLICT DO NOTHING grâce à la clé composée userId_audioId
+    await prisma.favorite.upsert({
+      where: {
+        userId_audioId: {
+          userId,
+          audioId
+        }
+      },
+      update: {}, // Aucune action si le favori existe déjà
+      create: {
+        userId,
+        audioId
+      }
+    });
 
     res.json({ success: true, message: "Ajouté aux favoris" });
   } catch (err) {
@@ -38,18 +49,29 @@ exports.addFavorite = async (req, res) => {
 
 // 💔 DELETE /api/favorites/:audioId — retirer un favori
 exports.removeFavorite = async (req, res) => {
-  const userId = req.user.id; 
-  const audioId = req.params.audioId;
+  const userId = req.user.id;
+  const audioId = parseInt(req.params.audioId);
+
+  if (isNaN(audioId)) {
+    return res.status(400).json({ error: "ID d'audio invalide" });
+  }
 
   try {
-    await db.query(
-      `DELETE FROM favorites WHERE user_id = $1 AND audio_id = $2`,
-      [userId, audioId]
-    );
+    await prisma.favorite.delete({
+      where: {
+        userId_audioId: {
+          userId,
+          audioId
+        }
+      }
+    });
 
     res.json({ success: true, message: "Retiré des favoris" });
   } catch (err) {
     console.error(err);
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: "Favori non trouvé" });
+    }
     res.status(500).json({ error: "Erreur lors de la suppression du favori" });
   }
 };
@@ -59,16 +81,15 @@ exports.listFavorites = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const result = await db.query(
-      `SELECT a.*
-       FROM favorites f
-       JOIN audio_files a ON f.audio_id = a.id
-       WHERE f.user_id = $1
-       ORDER BY f.created_at DESC`,
-      [userId]
-    );
+    const favorites = await prisma.favorite.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        audio: true
+      }
+    });
 
-    const audios = result.rows.map(row => mapAudio(row, req));
+    const audios = favorites.map(fav => mapAudio(fav.audio));
     res.json({ favorites: audios });
   } catch (err) {
     console.error(err);

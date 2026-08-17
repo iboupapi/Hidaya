@@ -17,7 +17,8 @@ backend/
 │   ├── accessController.js        ➔ Gestion des codes d'accès & verrous
 │   ├── adminController.js         ➔ Actions d'administration & Uploads
 │   ├── audioController.js         ➔ Consultations et écoutes des disciples
-│   ├── authController.js          ➔ Inscription, Connexion, Déconnexion
+│   ├── userController.js          ➔ Inscription, Connexion, Déconnexion
+│   ├── homeController.js          ➔ Feed de la page d'accueil (sections, compteur d'écoutes)
 │   ├── notificationController.js  ➔ Gestion de la cloche in-app
 │   └── playlistController.js      ➔ Gestion des albums (Playlists)
 ├── middleware/         # Filtres de sécurité et de traitement
@@ -29,9 +30,12 @@ backend/
 │   ├── accessRoutes.js
 │   ├── adminRoutes.js
 │   ├── audioRoutes.js
-│   ├── authRoutes.js
+│   ├── favoriteRoutes.js
+│   ├── homeRoutes.js
 │   ├── notificationRoutes.js
-│   └── playlistRoutes.js
+│   ├── playlistRoutes.js
+│   ├── themeRoutes.js
+│   └── userRoutes.js
 ├── uploads/            # Stockage physique des fichiers audio et images
 │   ├── audios/
 │   └── images/

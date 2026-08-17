@@ -1,81 +1,106 @@
-const db = require('../models/db');
-const path = require('path');
+const prisma = require('../models/db');
+const publicUrl = require('../utils/publicUrl');
+const { cached, invalidate } = require('../utils/cache');
 
-// 🔧 Helper pour transformer les champs SQL → format API
-function mapAudio(row, req) {
+// 🔧 Helper pour transformer l'objet Prisma → format API
+function mapAudio(audio) {
   return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    category: row.main_category,
-    subCategory: row.sub_category,
-    image: row.image_path
-      ? `${req.protocol}://${req.get('host')}/${row.image_path}`
-      : null,
-    file: `${req.protocol}://${req.get('host')}/${row.file_path}`,
-    createdAt: row.created_at
+    id: audio.id,
+    title: audio.title,
+    description: audio.description,
+    category: audio.mainCategory,
+    subCategory: audio.subCategory,
+    duration: audio.duration,
+    playCount: audio.playCount || 0,
+    image: publicUrl(audio.imagePath),
+    file: publicUrl(audio.filePath),
+    createdAt: audio.createdAt
   };
 }
 
-// 🎧 GET /api/audios — liste complète
+// 🎧 GET /api/audios?page=1&limit=20 — liste paginée
 exports.listAudios = async (req, res) => {
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50); // plafond à 50/page
+  const skip = (page - 1) * limit;
+
   try {
-    const result = await db.query(
-      `SELECT * FROM audio_files ORDER BY created_at DESC`
-    );
+    const where = {
+      isPrivate: false,
+      playlists: { none: {} }
+    };
 
-    const audios = result.rows.map(row => mapAudio(row, req));
+    const [audios, total] = await Promise.all([
+      prisma.audioFile.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.audioFile.count({ where })
+    ]);
 
-    res.json({ audios });
+    res.json({
+      audios: audios.map(audio => mapAudio(audio)),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (err) {
-    console.error(err);
+    console.error("🔥 Erreur listAudios:", err);
     res.status(500).json({ error: "Erreur lors du chargement des audios" });
   }
 };
 
-// 🎧 GET /api/audios/:id — un audio
 // 🎧 GET /api/audios/:id — voir/écouter un audio (Avec gestion des verrous d'albums)
 exports.viewAudio = async (req, res) => {
-  const id = req.params.id;
-  const userId = req.user?.id; // Optionnel (au cas où la route devienne accessible hors connexion, mais recommandé d'être connecté ici)
+  const id = parseInt(req.params.id);
+  const userId = req.user?.id;
   const userRole = req.user?.role;
 
-  try {
-    // 1. Récupérer l'audio
-    const result = await db.query(`SELECT * FROM audio_files WHERE id = $1`, [id]);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID invalide" });
+  }
 
-    if (result.rows.length === 0) {
+  try {
+    const audio = await prisma.audioFile.findUnique({
+      where: { id }
+    });
+
+    if (!audio) {
       return res.status(404).json({ error: "Audio introuvable" });
     }
 
-    const audio = result.rows[0];
+    const lockedItem = await prisma.playlistItem.findFirst({
+      where: {
+        audioId: id,
+        playlist: {
+          accessCodes: {
+            some: {}
+          }
+        }
+      },
+      select: { playlistId: true }
+    });
 
-    // 2. Vérifier si cet audio fait partie d'une playlist verrouillée
-    // On regarde si l'audio est dans une playlist qui possède au moins un code d'accès généré
-    const lockCheck = await db.query(
-      `SELECT pi.playlist_id 
-       FROM playlist_items pi
-       INNER JOIN access_codes ac ON pi.playlist_id = ac.playlist_id
-       WHERE pi.audio_id = $1 LIMIT 1`,
-      [id]
-    );
+    if (lockedItem) {
+      const playlistId = lockedItem.playlistId;
 
-    // Si l'audio fait partie d'un album verrouillé
-    if (lockCheck.rows.length > 0) {
-      const playlistId = lockCheck.rows[0].playlist_id;
-
-      // Si l'utilisateur n'est pas Admin, on doit vérifier s'il a acheté/débloqué cet album
       if (userRole !== 'admin' && userRole !== 'superadmin') {
         if (!userId) {
           return res.status(401).json({ error: "Cet audio fait partie d'un album privé. Veuillez vous connecter." });
         }
 
-        const unlockCheck = await db.query(
-          `SELECT 1 FROM unlocked_playlists WHERE user_id = $1 AND playlist_id = $2`,
-          [userId, playlistId]
-        );
+        const unlocked = await prisma.unlockedPlaylist.findUnique({
+          where: {
+            userId_playlistId: { userId, playlistId }
+          }
+        });
 
-        if (unlockCheck.rows.length === 0) {
+        if (!unlocked) {
           return res.status(403).json({ 
             error: "Contenu privé", 
             message: "Cet audio est verrouillé. Veuillez entrer le code d'accès de l'album pour le débloquer." 
@@ -84,68 +109,100 @@ exports.viewAudio = async (req, res) => {
       }
     }
 
-    // 3. Si tout est OK (gratuit, admin ou déjà débloqué), on renvoie l'audio
-    res.json({ audio: mapAudio(audio, req) });
+    res.json({ audio: mapAudio(audio) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur lors du chargement de l’audio" });
   }
 };
 
-// 🎧 GET /api/audios/category/:main — par catégorie principale
+// 🎧 GET /api/audios/category/:main?page=1&limit=20 — par catégorie principale
 exports.listByMainCategory = async (req, res) => {
   const main = req.params.main;
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const skip = (page - 1) * limit;
 
   try {
-    const result = await db.query(
-      `SELECT * FROM audio_files WHERE main_category = $1 ORDER BY created_at DESC`,
-      [main]
-    );
+    const where = {
+      mainCategory: main,
+      isPrivate: false,
+      playlists: { none: {} } // 🟢 Correction
+    };
 
-    const audios = result.rows.map(row => mapAudio(row, req));
+    const [audios, total] = await Promise.all([
+      prisma.audioFile.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      prisma.audioFile.count({ where })
+    ]);
 
-    res.json({ main, audios });
+    res.json({
+      main,
+      audios: audios.map(audio => mapAudio(audio)),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur lors du chargement des audios" });
   }
 };
 
-// 🎧 GET /api/audios/sub/:sub — par sous-catégorie
+// 🎧 GET /api/audios/sub/:sub?page=1&limit=20 — par sous-catégorie
 exports.listBySubCategory = async (req, res) => {
   const sub = req.params.sub;
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const skip = (page - 1) * limit;
 
   try {
-    const result = await db.query(
-      `SELECT * FROM audio_files 
-       WHERE sub_category = $1
-       ORDER BY created_at DESC`,
-      [sub]
-    );
+    const where = {
+      subCategory: sub,
+      isPrivate: false,
+      playlists: { none: {} } // 🟢 Correction
+    };
 
-    const audios = result.rows.map(row => mapAudio(row, req));
-    res.json({ sub, audios });
+    const [audios, total] = await Promise.all([
+      prisma.audioFile.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      prisma.audioFile.count({ where })
+    ]);
+
+    res.json({
+      sub,
+      audios: audios.map(audio => mapAudio(audio)),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur lors du chargement des audios" });
   }
 };
 
-// 🔍 GET /api/audios/search?q=mot
+// 🔍 GET /api/audios/search?q=mot&page=1&limit=20
 exports.searchAudios = async (req, res) => {
   const q = req.query.q || "";
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+  const skip = (page - 1) * limit;
 
   try {
-    const result = await db.query(
-      `SELECT * FROM audio_files 
-       WHERE title ILIKE $1 OR description ILIKE $1
-       ORDER BY created_at DESC`,
-      [`%${q}%`]
-    );
+    const where = {
+      isPrivate: false,
+      playlists: { none: {} }, // 🟢 Correction
+      OR: [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } }
+      ]
+    };
 
-    const audios = result.rows.map(row => mapAudio(row, req));
+    const [audios, total] = await Promise.all([
+      prisma.audioFile.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      prisma.audioFile.count({ where })
+    ]);
 
-    res.json({ keyword: q, audios });
+    res.json({
+      keyword: q,
+      audios: audios.map(audio => mapAudio(audio)),
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Erreur lors de la recherche" });
@@ -154,27 +211,87 @@ exports.searchAudios = async (req, res) => {
 
 // 🗑 DELETE /api/audios/:id
 exports.deleteAudio = async (req, res) => {
-  const id = req.params.id;
+  const id = parseInt(req.params.id);
+
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID invalide" });
+  }
 
   try {
-    await db.query(`DELETE FROM favorites WHERE audio_id = $1`, [id]);
-    await db.query(`DELETE FROM playlist_items WHERE audio_id = $1`, [id]);
-    await db.query(`DELETE FROM audio_files WHERE id = $1`, [id]);
+    await prisma.audioFile.delete({
+      where: { id }
+    });
+
+    await invalidate('home:feed:*');
+    await invalidate('audios:popular:*');
 
     res.json({ success: true, message: "Audio supprimé" });
   } catch (err) {
     console.error(err);
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: "Audio introuvable" });
+    }
     res.status(500).json({ error: "Erreur lors de la suppression" });
+  }
+};
+
+// 🔥 GET /api/audios/popular — Récupérer le top des audios les plus écoutés
+exports.listPopularAudios = async (req, res) => {
+  const limit = parseInt(req.query.limit) || 5;
+
+  try {
+    const audios = await cached(`audios:popular:${limit}`, 60, () =>
+      prisma.audioFile.findMany({
+        where: {
+          isPrivate: false,
+          playlists: { none: {} } // 🟢 Correction
+        },
+        take: limit,
+        orderBy: { playCount: 'desc' }
+      })
+    );
+
+    res.json({ audios: audios.map(audio => mapAudio(audio)) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur lors du chargement des audios populaires" });
+  }
+};
+
+// 📈 POST /api/audios/:id/play — Incrémenter le compteur d'écoutes
+exports.incrementPlayCount = async (req, res) => {
+  const id = parseInt(req.params.id);
+
+  if (isNaN(id)) {
+    return res.status(400).json({ error: "ID invalide" });
+  }
+
+  try {
+    const updatedAudio = await prisma.audioFile.update({
+      where: { id },
+      data: {
+        playCount: { increment: 1 }
+      }
+    });
+
+    res.json({ 
+      success: true, 
+      playCount: updatedAudio.playCount 
+    });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: "Audio introuvable" });
+    }
+    res.status(500).json({ error: "Erreur lors de l'incrémentation de la lecture" });
   }
 };
 
 // 🎧 POST /api/audios/upload (Réservé aux Admins)
 exports.uploadAudio = async (req, res) => {
   try {
-    // Les fichiers uploadés sont accessibles via req.files grâce à Multer (.any() ou .fields())
-    // Mais attention : on doit s'assurer que le fichier audio obligatoire est bien là
     const audioFile = req.files?.audio?.[0];
-    const imageFile = req.files?.image?.[0];
+    const imageFile = req.files?.image?.[0] ?? null; // Safe fallback
 
     if (!audioFile) {
       return res.status(400).json({ error: "Le fichier audio est obligatoire." });
@@ -186,25 +303,26 @@ exports.uploadAudio = async (req, res) => {
       return res.status(400).json({ error: "Le titre et la catégorie principale sont obligatoires." });
     }
 
-    // Extraction des chemins relatifs pour la BDD (ex: "uploads/audios/filename.mp3")
-    // On remplace les antislashs Windows (\) par des slashs (/) pour éviter les soucis d'URL
-    const filePath = audioFile.path.replace(/\\/g, '/');
-    const imagePath = imageFile ? imageFile.path.replace(/\\/g, '/') : null;
-    
-    // ID de l'admin connecté (injecté par notre middleware d'authentification)
-    const uploadedBy = req.user.id; 
+    const filePath = audioFile.key;
+    const imagePath = imageFile ? imageFile.key : null;
+    const uploadedBy = req.user.id;
 
-    const result = await db.query(
-      `INSERT INTO audio_files (title, description, file_path, image_path, main_category, sub_category, uploaded_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [title, description, filePath, imagePath, main_category, sub_category, uploadedBy]
-    );
+    const newAudio = await prisma.audioFile.create({
+      data: {
+        title: title.trim(),
+        description: description ? description.trim() : null,
+        filePath,
+        imagePath,
+        mainCategory: main_category.trim(),
+        subCategory: sub_category ? sub_category.trim() : null,
+        uploadedBy
+      }
+    });
 
     res.status(201).json({
       success: true,
       message: "Audio ajouté avec succès !",
-      audio: mapAudio(result.rows[0], req)
+      audio: mapAudio(newAudio)
     });
 
   } catch (err) {

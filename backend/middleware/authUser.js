@@ -1,40 +1,44 @@
 const jwt = require('jsonwebtoken');
-const db = require('../models/db');
-
-const JWT_SECRET = "TON_SECRET_A_CHANGER";
+const prisma = require('../models/db');
 
 module.exports = async function authUser(req, res, next) {
   const authHeader = req.headers.authorization;
 
-  if (!authHeader)
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: "Token manquant" });
+  }
 
   const token = authHeader.split(" ")[1];
 
   try {
-    // Vérifier si le token est blacklisté
-    const blacklisted = await db.query(
-      `SELECT id FROM token_blacklist WHERE token = $1`,
-      [token]
-    );
+    // 1. Vérifier si le token est blacklisté
+    const blacklisted = await prisma.tokenBlacklist.findFirst({
+      where: { token }
+    });
 
-    if (blacklisted.rows.length > 0) {
+    if (blacklisted) {
       return res.status(401).json({ error: "Token expiré ou invalide" });
     }
 
-    // Vérifier le token JWT
-    const decoded = jwt.verify(token, JWT_SECRET);
+    // 2. Vérifier et décoder le token JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Vérifier que l'utilisateur existe toujours
-    const result = await db.query(
-      `SELECT id, username, email, role FROM users WHERE id = $1`,
-      [decoded.id]
-    );
+    // 3. Vérifier que l'utilisateur existe toujours dans la base de données
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true
+      }
+    });
 
-    if (result.rows.length === 0)
+    if (!user) {
       return res.status(401).json({ error: "Utilisateur introuvable" });
+    }
 
-    req.user = result.rows[0];
+    req.user = user;
     next();
   } catch (err) {
     console.error(err);

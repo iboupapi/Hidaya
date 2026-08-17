@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { background: #0A120A; color: #E8F0C8; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #0A120A; }
+  ::-webkit-scrollbar-thumb { background: #2A4A2A; border-radius: 4px; }
+  input, button, textarea, select { outline: none; font-family: inherit; }
+}
+
+@layer components {
+  .btn-primary { @apply w-full py-3 bg-green-dahira hover:bg-[#256025] text-yellow-accent font-semibold rounded-xl transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed; }
+  .input-field { @apply w-full bg-bg-secondary border border-border-subtle rounded-xl px-4 py-3 text-txt-primary placeholder:text-txt-disabled focus:border-green-dahira transition-colors duration-150; }
+  .card { @apply bg-bg-card border border-border-subtle rounded-2xl; }
+  .chip { @apply px-3 py-1.5 rounded-full text-xs border border-border-subtle text-txt-muted bg-bg-secondary transition-all duration-150 cursor-pointer whitespace-nowrap; }
+  .chip-active { @apply bg-[#1A4A1A] text-yellow-accent border-green-dahira; }
+  .spinner { @apply w-5 h-5 border-2 border-yellow-accent/30 border-t-yellow-accent rounded-full animate-spin; }
+}

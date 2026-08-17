@@ -1,17 +1,21 @@
 {
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1108.0",
+    "@aws-sdk/lib-storage": "^3.1108.0",
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.2.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.18.2",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
-    "mysql2": "^3.14.3",
-    "nodemailer": "^8.0.10",
-    "pg": "^8.21.0",
+    "multer-s3": "^3.0.1",
+    "nodemailer": "^9.0.4",
     "sanitize-filename": "^1.6.3"
   },
   "name": "hidaya",
@@ -25,6 +29,12 @@
   "author": "Ibrahima Ndoye",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^3.1.10"
-  }
+    "nodemon": "^3.1.10",
+    "pm2": "^5.3.1",
+    "prisma": "^6.19.3"
+  },
+  
+  "prisma": {
+  "seed": "node prisma/seed.js"
+}
 }

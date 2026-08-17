@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const db = require('../models/db');
+const prisma = require('../models/db');
 
 // Middleware global pour vérifier le Token JWT et la Blacklist
 exports.authenticateToken = async (req, res, next) => {
@@ -11,20 +11,19 @@ exports.authenticateToken = async (req, res, next) => {
   }
 
   try {
-    // 1. Vérifier si le token est dans la blacklist PostgreSQL
-    const blacklistCheck = await db.query(
-      'SELECT * FROM token_blacklist WHERE token = $1',
-      [token]
-    );
+    // 1. Vérifier si le token est dans la blacklist PostgreSQL via Prisma
+    const blacklisted = await prisma.tokenBlacklist.findFirst({
+      where: { token }
+    });
 
-    if (blacklistCheck.rows.length > 0) {
+    if (blacklisted) {
       return res.status(401).json({ error: "Session expirée ou déconnectée. Veuillez vous reconnecter." });
     }
 
     // 2. Valider le token JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // On injecte les infos de l'utilisateur décodé dans la requête
+    // Injecter les données décodées dans req.user
     req.user = decoded; 
     next();
   } catch (err) {
@@ -33,9 +32,9 @@ exports.authenticateToken = async (req, res, next) => {
   }
 };
 
-// Middleware restrictif pour les Admins uniquement
+// Middleware restrictif pour les Admins uniquement (admin et superadmin)
 exports.requireAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
     return res.status(403).json({ error: "Accès interdit. Droits Administrateur requis." });
   }
   next();

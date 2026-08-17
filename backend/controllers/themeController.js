@@ -1,18 +1,25 @@
-const db = require('../models/db');
+const prisma = require('../models/db');
 
 // 🎧 GET /api/themes/main
 // Récupère toutes les catégories principales existantes (sans doublons)
 exports.getMainCategories = async (req, res) => {
   try {
-    const result = await db.query(
-      `SELECT DISTINCT main_category 
-       FROM audio_files 
-       WHERE main_category IS NOT NULL AND main_category != ''
-       ORDER BY main_category ASC`
-    );
-    
-    // On extrait juste les chaînes de caractères dans un tableau propre
-    const categories = result.rows.map(row => row.main_category);
+    const rows = await prisma.audioFile.findMany({
+      where: {
+        mainCategory: {
+          notIn: ['', null]
+        }
+      },
+      distinct: ['mainCategory'],
+      select: {
+        mainCategory: true
+      },
+      orderBy: {
+        mainCategory: 'asc'
+      }
+    });
+
+    const categories = rows.map(row => row.mainCategory);
     res.json({ categories });
   } catch (err) {
     console.error(err);
@@ -24,14 +31,22 @@ exports.getMainCategories = async (req, res) => {
 // Récupère toutes les sous-catégories existantes (sans doublons)
 exports.getSubCategories = async (req, res) => {
   try {
-    const result = await db.query(
-      `SELECT DISTINCT sub_category 
-       FROM audio_files 
-       WHERE sub_category IS NOT NULL AND sub_category != ''
-       ORDER BY sub_category ASC`
-    );
-    
-    const subCategories = result.rows.map(row => row.sub_category);
+    const rows = await prisma.audioFile.findMany({
+      where: {
+        subCategory: {
+          notIn: ['', null]
+        }
+      },
+      distinct: ['subCategory'],
+      select: {
+        subCategory: true
+      },
+      orderBy: {
+        subCategory: 'asc'
+      }
+    });
+
+    const subCategories = rows.map(row => row.subCategory);
     res.json({ subCategories });
   } catch (err) {
     console.error(err);
@@ -40,24 +55,33 @@ exports.getSubCategories = async (req, res) => {
 };
 
 // 🎧 GET /api/themes/mapping
-// Optionnel mais super utile pour le Front : Renvoie l'arborescence complète (Quelle sous-catégorie appartient à quelle catégorie principale)
+// Renvoie l'arborescence complète (Quelle sous-catégorie appartient à quelle catégorie principale)
 exports.getCategoryMapping = async (req, res) => {
   try {
-    const result = await db.query(
-      `SELECT DISTINCT main_category, sub_category 
-       FROM audio_files 
-       WHERE main_category IS NOT NULL AND sub_category IS NOT NULL
-       ORDER BY main_category, sub_category`
-    );
+    const rows = await prisma.audioFile.findMany({
+      where: {
+        mainCategory: { notIn: ['', null] },
+        subCategory: { notIn: ['', null] }
+      },
+      distinct: ['mainCategory', 'subCategory'],
+      select: {
+        mainCategory: true,
+        subCategory: true
+      },
+      orderBy: [
+        { mainCategory: 'asc' },
+        { subCategory: 'asc' }
+      ]
+    });
 
-    // Structuration des données sous forme d'objet : { "Religion": ["Cours", "Conférences"], "Sante": [...] }
+    // Structuration des données : { "Religion": ["Cours", "Conférences"], "Sante": [...] }
     const mapping = {};
-    result.rows.forEach(row => {
-      if (!mapping[row.main_category]) {
-        mapping[row.main_category] = [];
+    rows.forEach(row => {
+      if (!mapping[row.mainCategory]) {
+        mapping[row.mainCategory] = [];
       }
-      if (row.sub_category && !mapping[row.main_category].includes(row.sub_category)) {
-        mapping[row.main_category].push(row.sub_category);
+      if (row.subCategory && !mapping[row.mainCategory].includes(row.subCategory)) {
+        mapping[row.mainCategory].push(row.subCategory);
       }
     });
 

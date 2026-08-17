@@ -1,0 +1,139 @@
+generator client {
+    provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int                @id @default(autoincrement())
+  username          String
+  email             String             @unique
+  password          String
+  role              String?            @default("user") @db.VarChar(20)
+  createdAt         DateTime?          @default(now()) @map("created_at") @db.Timestamp(6)
+  uploadedAudioFiles AudioFile[]       @relation("UserUploadedAudio")
+  favorites         Favorite[]
+  notifications     Notification[]
+  playlists         Playlist[]
+  unlockedPlaylists UnlockedPlaylist[]
+
+  @@map("users")
+}
+
+model AudioFile {
+  id           Int            @id @default(autoincrement())
+  title        String
+  description  String?
+  filePath     String         @map("file_path")
+  imagePath    String?        @map("image_path")
+  
+  // Catégories :
+  // mainCategory = "Enseignement" | "Émission" | "Musique spirituelle"
+  // subCategory  = "Bayane" | "Conférence" | "Rappel" (si mainCategory == "Enseignement")
+  mainCategory String?        @map("main_category") @db.VarChar(50)
+  subCategory  String?        @map("sub_category") @db.VarChar(50)
+  
+  // Nouveaux champs pour la dynamique de l'application :
+  duration     Int?           @default(0) // Durée en secondes
+  playCount    Int?           @default(0) @map("play_count") // Compteur d'écoutes pour "Les plus écoutés"
+  
+  uploadedBy   Int?           @map("uploaded_by")
+  createdAt    DateTime?      @default(now()) @map("created_at") @db.Timestamp(6)
+  uploader     User?          @relation("UserUploadedAudio", fields: [uploadedBy], references: [id], onUpdate: NoAction)
+  favorites    Favorite[]
+  notifications Notification[]
+  playlists    PlaylistItem[]
+
+  @@index([mainCategory], map: "idx_audio_main_category")
+  @@index([subCategory], map: "idx_audio_sub_category")
+  @@index([playCount], map: "idx_audio_play_count")
+  @@map("audio_files")
+}
+
+model Playlist {
+  id                Int                @id @default(autoincrement())
+  name              String
+  userId            Int?               @map("user_id")
+  coverImage        String?
+  isPrivate         Boolean?           @default(false) @map("is_private")
+  contactNumber     String?
+  createdAt         DateTime?          @default(now()) @map("created_at") @db.Timestamp(6)
+  accessCodes       AccessCode[]
+  items             PlaylistItem[]
+  user              User?              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  unlockedPlaylists UnlockedPlaylist[]
+
+  @@index([userId], map: "idx_playlist_user")
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  playlistId Int       @map("playlist_id")
+  audioId    Int       @map("audio_id")
+  position   Int?      @default(0)
+  audio      AudioFile @relation(fields: [audioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  playlist   Playlist  @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([playlistId, audioId])
+  @@map("playlist_items")
+}
+
+model AccessCode {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique @db.VarChar(50)
+  playlistId Int?      @map("playlist_id")
+  isUsed     Boolean?  @default(false) @map("is_used")
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  playlist   Playlist? @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("access_codes")
+}
+
+model Notification {
+  id        Int        @id @default(autoincrement())
+  userId    Int?       @map("user_id")
+  title     String
+  message   String
+  audioId   Int?       @map("audio_id")
+  isRead    Boolean?   @default(false) @map("is_read")
+  createdAt DateTime?  @default(now()) @map("created_at") @db.Timestamp(6)
+  audio     AudioFile? @relation(fields: [audioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("notifications")
+}
+
+model Favorite {
+  userId    Int       @map("user_id")
+  audioId   Int       @map("audio_id")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  audio     AudioFile @relation(fields: [audioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, audioId])
+  @@index([userId], map: "idx_favorites_user")
+  @@map("favorites")
+}
+
+model TokenBlacklist {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamp(6)
+
+  @@map("token_blacklist")
+}
+
+model UnlockedPlaylist {
+  userId     Int       @map("user_id")
+  playlistId Int       @map("playlist_id")
+  unlockedAt DateTime? @default(now()) @map("unlocked_at") @db.Timestamp(6)
+  playlist   Playlist  @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, playlistId])
+  @@map("unlocked_playlists")
+}

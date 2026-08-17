@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 require('dotenv').config();
 
 const userRoutes = require('./routes/userRoutes');
@@ -10,12 +11,22 @@ const favoriteRoutes = require('./routes/favoriteRoutes');
 const themeRoutes = require('./routes/themeRoutes');
 const accessRoutes = require('./routes/accessRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const homeRoutes = require('./routes/homeRoutes');
 
 const app = express();
 
-// 🔥 Autoriser React à accéder à l’API
+app.use(compression());
+
+// 🔥 Autoriser React à accéder à l'API
+// CORS_ORIGINS attendu au format "https://domaine1.com,https://domaine2.com"
+// (voir .env). En local, les valeurs par défaut couvrent Vite (5173/5174).
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174")
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: allowedOrigins,
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
   exposedHeaders: ["Authorization"]
@@ -25,8 +36,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔥 Servir les fichiers uploadés
-app.use('/uploads', express.static('uploads'));
+// 🔥 Note : les fichiers audio/image sont désormais servis directement depuis
+// le bucket S3/R2/B2 (voir backend/utils/publicUrl.js), plus besoin de les
+// servir depuis ce serveur.
 
 // 🔥 ROUTES API
 app.use('/api/auth', userRoutes);
@@ -37,6 +49,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/themes', themeRoutes);
 app.use('/api/access', accessRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/home', homeRoutes);
 
 // 🔥 Route test
 app.get('/', (req, res) => {
