@@ -1,4 +1,16 @@
 {
+  "name": "hidaya",
+  "version": "1.0.0",
+  "description": "Plateforme dédiée à l’écoute et au partage des audios de l’Imam Mahdi.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "build": "prisma generate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ibrahima Ndoye",
+  "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1108.0",
     "@aws-sdk/lib-storage": "^3.1108.0",
@@ -18,20 +30,10 @@
     "nodemailer": "^9.0.4",
     "sanitize-filename": "^1.6.3"
   },
-  "name": "hidaya",
-  "version": "1.0.0",
-  "description": "Plateforme dédiée à l’écoute et au partage des audios de l’Imam Mahdi. Interface simple, classement par thème, accès rapide aux rappels et enseignements spirituels. Un outil au service de la foi et de la communauté.",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
-  },
-  "author": "Ibrahima Ndoye",
-  "license": "ISC",
   "devDependencies": {
     "nodemon": "^3.1.10",
-    "pm2": "^5.3.1",
-    "prisma": "^6.12.0"
+    "pm2": "^7.0.3",
+    "prisma": "^6.19.3"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
