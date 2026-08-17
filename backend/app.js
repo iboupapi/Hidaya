@@ -17,30 +17,38 @@ const app = express();
 
 app.use(compression());
 
-// 🔥 Autoriser React à accéder à l'API
-// CORS_ORIGINS attendu au format "https://domaine1.com,https://domaine2.com"
-// (voir .env). En local, les valeurs par défaut couvrent Vite (5173/5174).
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174")
+// Nettoyage et normalisation des origines autorisées (retrait des slashs de fin)
+const rawOrigins = process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174";
+const allowedOrigins = rawOrigins
   .split(',')
-  .map(origin => origin.trim())
+  .map(origin => origin.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
-app.use(cors({
-  origin: allowedOrigins,
+// Configuration robuste du middleware CORS
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Autorise les requêtes sans origine (comme Postman ou requêtes serveur à serveur)
+    if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origine ${origin} non autorisée par CORS`));
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ["Content-Type", "Authorization"],
   exposedHeaders: ["Authorization"]
-}));
+};
 
+app.use(cors(corsOptions));
+
+// 🔥 Gestion explicite des requêtes preflight HTTP OPTIONS pour toutes les routes
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔥 Note : les fichiers audio/image sont désormais servis directement depuis
-// le bucket S3/R2/B2 (voir backend/utils/publicUrl.js), plus besoin de les
-// servir depuis ce serveur.
-
-// 🔥 ROUTES API
+// ROUTES API
 app.use('/api/auth', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/audios', audioRoutes);
@@ -51,12 +59,12 @@ app.use('/api/access', accessRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/home', homeRoutes);
 
-// 🔥 Route test
+// Route test
 app.get('/', (req, res) => {
   res.json({ message: "API Hidaya opérationnelle" });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Serveur API Hidaya lancé sur http://localhost:${PORT}`);
+  console.log(`Serveur API Hidaya lancé sur le port ${PORT}`);
 });
