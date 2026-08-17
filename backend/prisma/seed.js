@@ -8,23 +8,20 @@ async function main() {
   const password = process.env.ADMIN_PASSWORD;
 
   if (!email || !password) {
-    console.error('Erreur: ADMIN_EMAIL et ADMIN_PASSWORD doivent être définis dans les variables d\'environnement.');
+    console.error("Erreur: ADMIN_EMAIL et ADMIN_PASSWORD doivent être définis dans les variables d'environnement.");
     process.exit(1);
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Utilisation de upsert : créer si n'existe pas, sinon ne rien faire
   const admin = await prisma.user.upsert({
     where: { email: email },
     update: {}, 
     create: {
       email: email,
-      username: 'admin', // <-- Le champ manquant ajouté ici
+      username: 'admin',
       password: hashedPassword,
-      role: 'ADMIN',
-      name: 'Admin Principal',
-      is_verified: true
+      role: 'admin' // Alignique avec le default("user")
     },
   });
 
