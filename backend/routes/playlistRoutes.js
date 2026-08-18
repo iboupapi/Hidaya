@@ -15,7 +15,7 @@ router.post(
   '/',
   upload.fields([
     { name: 'image', maxCount: 1 },
-    { name: 'audios', maxCount: 20 }
+    { name: 'audios', maxCount: 100 }
   ]),
   playlistController.createPlaylist
 );

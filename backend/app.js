@@ -45,8 +45,8 @@ app.use(cors(corsOptions));
 // 🔥 Gestion explicite des requêtes preflight HTTP OPTIONS pour toutes les routes
 app.options(/(.*)/, cors(corsOptions));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // ROUTES API
 app.use('/api/auth', userRoutes);
@@ -65,6 +65,13 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Serveur API Hidaya lancé sur le port ${PORT}`);
 });
+
+// Un album peut contenir des dizaines de fichiers audio à uploader d'un coup.
+// ⚠️ Ces valeurs doivent être posées sur "server" (ce que renvoie app.listen()),
+// PAS sur "app" — sinon elles n'ont aucun effet, c'est ce qui se passait avant.
+server.timeout = 300000;          // 5 minutes
+server.keepAliveTimeout = 120000; // 2 minutes
+server.headersTimeout = 120000;   // 2 minutes

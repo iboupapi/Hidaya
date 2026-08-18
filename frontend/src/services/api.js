@@ -54,9 +54,9 @@ export const audioAPI = {
 
 // Admin
 export const adminAPI = {
-  uploadAudio: (fd)       => api.post('/admin/audios', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadAudio: (fd)       => api.post('/admin/audios', fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 0 }),
   listAudios:  (page = 1, limit = 20) => api.get('/admin/audios', { params: { page, limit } }),
-  updateAudio: (id, data) => api.put(`/admin/audios/${id}`, data),
+  updateAudio: (id, data) => api.put(`/admin/audios/${id}`, data), 
   deleteAudio: (id)       => api.delete(`/admin/audios/${id}`),
   dashboard:   ()         => api.get('/admin/dashboard'),
   listUsers:   ()         => api.get('/admin/users'),
@@ -64,13 +64,13 @@ export const adminAPI = {
 }
 
 // Playlists
-// Playlists
 export const playlistAPI = {
   getAll:      ()            => api.get('/playlists'),
   create: (param1, param2) => {
     if (param1 instanceof FormData) {
       return api.post('/playlists', param1, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 0 // ⏱️ pas de limite : un album peut contenir des dizaines de fichiers audio
       })
     }
     if (typeof param1 === 'object' && param1 !== null) {
@@ -80,11 +80,21 @@ export const playlistAPI = {
   },
   
   getById:     (id)          => api.get(`/playlists/${id}`),
+  
+  update: (id, formData) => {
+    if (formData instanceof FormData) {
+      return api.put(`/playlists/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }, 
+        timeout: 0
+      })
+    }
+    return api.put(`/playlists/${id}`, formData)
+  },
+
   addAudio:    (id, audio_id) => api.post(`/playlists/${id}/add`, { audio_id }),
   delete:      (id)          => api.delete(`/playlists/${id}`),
   removeAudio: (id, audioId)  => api.delete(`/playlists/${id}/remove/${audioId}`),
   
-  // 🟢 AJOUTER CETTE LIGNE :
   unlock:      (id, code)    => api.post(`/playlists/${id}/unlock`, { code }),
   getAccessList: (id)        => api.get(`/playlists/${id}/access-list`),
 }

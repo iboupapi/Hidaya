@@ -177,7 +177,7 @@ export default function Home() {
         ) : (
           <>
             {/* HERO BANNER */}
-            <div className="relative mb-10 overflow-hidden rounded-3xl h-[240px] sm:h-[300px] md:h-[360px] flex items-end p-6 md:p-10 border border-border-subtle shadow-2xl group bg-bg-card">
+            <div className="relative mb-10 overflow-hidden rounded-3xl h-[260px] sm:h-[300px] md:h-[360px] flex items-end p-4 sm:p-6 md:p-10 border border-border-subtle shadow-2xl group bg-bg-card">
               <img 
                 src={heroCover} 
                 alt={featuredAudio?.title || "Hidaya"} 
@@ -188,15 +188,17 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-r from-bg-main via-bg-main/50 to-transparent w-full sm:w-3/4" />
 
               <div className="relative z-10 max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 text-xs md:text-sm font-semibold text-yellow-accent bg-black/40 backdrop-blur-md px-3 py-1 rounded-full mb-3 border border-yellow-accent/30 shadow-sm">
-                  <Sparkles size={14} /> {featuredAudio ? "Enseignement du jour" : "Bienvenue sur Hidaya"}
+                <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs md:text-sm font-semibold text-yellow-accent bg-black/40 backdrop-blur-md px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full mb-2 sm:mb-3 border border-yellow-accent/30 shadow-sm">
+                  <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" /> {featuredAudio ? "Enseignement du jour" : "Bienvenue sur Hidaya"}
                 </span>
 
-                <h3 className="text-2xl md:text-4xl font-extrabold text-white line-clamp-2 tracking-tight drop-shadow-md">
+                {/* Titre réajusté avec text-lg sur très petit écran puis text-xl sur sm */}
+                <h3 className="text-lg sm:text-2xl md:text-4xl font-extrabold text-white line-clamp-2 tracking-tight drop-shadow-md leading-snug">
                   {featuredAudio ? featuredAudio.title : "Votre espace d'écoute spirituelle"}
                 </h3>
 
-                <p className="text-sm md:text-base text-gray-200 line-clamp-2 mt-2 mb-6 drop-shadow">
+                {/* Description masquée/réduite en hauteur et marge réduite */}
+                <p className="text-xs sm:text-sm md:text-base text-gray-200 line-clamp-1 sm:line-clamp-2 mt-1 sm:mt-2 mb-3 sm:mb-6 drop-shadow">
                   {featuredAudio 
                     ? (featuredAudio.description || featuredAudio.speaker || 'Écoute spirituelle recommandée') 
                     : "Découvrez bientôt nos nouveaux enseignements, rappels et émissions."}
@@ -205,19 +207,19 @@ export default function Home() {
                 {featuredAudio && (
                   <button 
                     onClick={handleHeroPlay}
-                    className="flex items-center gap-2.5 bg-yellow-accent text-bg-main font-bold text-sm py-3 px-7 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
+                    className="flex items-center gap-2 bg-yellow-accent text-bg-main font-bold text-xs sm:text-sm py-2 px-5 sm:py-3 sm:px-7 rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer"
                   >
                     {featuredAudio.isLocked || featuredAudio.is_locked ? (
                       <>
-                        <Lock size={16} /> Déverrouiller le rappel
+                        <Lock size={14} className="sm:w-4 sm:h-4" /> Déverrouiller le rappel
                       </>
                     ) : isHeroPlaying ? (
                       <>
-                        <Pause size={16} fill="currentColor" /> Mettre en pause
+                        <Pause size={14} className="sm:w-4 sm:h-4" fill="currentColor" /> Mettre en pause
                       </>
                     ) : (
                       <>
-                        <Play size={16} fill="currentColor" /> Écouter maintenant
+                        <Play size={14} className="sm:w-4 sm:h-4" fill="currentColor" /> Écouter maintenant
                       </>
                     )}
                   </button>
